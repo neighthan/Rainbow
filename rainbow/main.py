@@ -4,10 +4,10 @@ import atari_py
 import numpy as np
 import torch
 
-from agent import Agent
-from env import Env
-from memory import ReplayMemory
-from test import test
+from .agent import Agent
+from .env import Env
+from .memory import ReplayMemory
+from .test import test
 from tqdm import tqdm
 
 
