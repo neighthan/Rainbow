@@ -1,7 +1,4 @@
 import os
-import plotly
-from plotly.graph_objs import Scatter
-from plotly.graph_objs.scatter import Line
 import torch
 
 from .env import Env
@@ -62,6 +59,12 @@ def test(args, T, dqn, val_mem, evaluate=False):
 
 # Plots min, max and mean + standard deviation bars of a population over time
 def _plot_line(xs, ys_population, title, path=""):
+    try:
+        import plotly
+        from plotly.graph_objs import Scatter
+        from plotly.graph_objs.scatter import Line
+    except ImportError:
+        return
     max_colour, mean_colour, std_colour, transparent = (
         "rgb(0, 132, 180)",
         "rgb(0, 172, 237)",
