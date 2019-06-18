@@ -244,10 +244,16 @@ class Trainer:
                 action = agent.act(state)  # Choose an action greedily (with noisy weights)
             else:
                 action = np.random.randint(n_actions)
-            next_state, reward, done = env.step(action)  # Step
-            if args.reward_clip > 0:
-                reward = max(min(reward, args.reward_clip), -args.reward_clip)  # Clip rewards
-            self.mem.append(state, action, reward, done)  # Append transition to memory
+            next_state, reward, done, info = env.step(action)  # Step
+            if "experience" in info:
+                for action, reward in info["experience"]:
+                    if args.reward_clip > 0:
+                        reward = max(min(reward, args.reward_clip), -args.reward_clip)
+                    self.mem.append(state, action, reward, done)
+            else:
+                if args.reward_clip > 0:
+                    reward = max(min(reward, args.reward_clip), -args.reward_clip)
+                self.mem.append(state, action, reward, done)
 
             # Train and test
             if T >= args.learn_start:
