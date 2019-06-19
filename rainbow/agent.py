@@ -1,8 +1,7 @@
-import os
+from pathlib import Path
 import numpy as np
 import torch
 from torch import optim
-
 from .model import DQN
 
 
@@ -21,7 +20,7 @@ class Agent:
         self.discount = args.discount
 
         self.online_net = DQN(args, self.action_space).to(device=args.device)
-        if args.model and os.path.isfile(args.model):
+        if args.model and Path(args.model).is_file():
             # Always load tensors onto CPU by default, will shift to GPU if necessary
             self.online_net.load_state_dict(torch.load(args.model, map_location="cpu"))
         self.online_net.train()
@@ -135,8 +134,10 @@ class Agent:
         self.target_net.load_state_dict(self.online_net.state_dict())
 
     # Save model parameters on current device (don't move model between devices)
-    def save(self, path):
-        torch.save(self.online_net.state_dict(), os.path.join(path, "model.pth"))
+    def save(self, path: str):
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        torch.save(self.online_net.state_dict(), path / "model.pth")
 
     # Evaluates Q-value based on single state (no batch)
     def evaluate_q(self, state):
