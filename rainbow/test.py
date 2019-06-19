@@ -9,7 +9,7 @@ q_vals = []
 best_avg_reward = -1e10
 
 
-def test(args, timestep, dqn, val_mem, evaluate=False):
+def test(args, timestep, dqn, val_mem, evaluate=False, render=False):
     global timesteps, rewards, q_vals, best_avg_reward
     env = Env(args)
     env.eval()
@@ -26,9 +26,9 @@ def test(args, timestep, dqn, val_mem, evaluate=False):
                 done = False
 
             action = dqn.act_e_greedy(state)  # Choose an action ε-greedily
-            state, reward, done, *info = env.step(action)
+            state, reward, done, *_ = env.step(action)
             reward_sum += reward
-            if args.render:
+            if render or args.render:
                 env.render()
 
             if done:
@@ -46,10 +46,6 @@ def test(args, timestep, dqn, val_mem, evaluate=False):
         # Append to results
         rewards.append(timestep_rewards)
         q_vals.append(timestep_q_vals)
-
-        # Plot
-        _plot_line(timesteps, rewards, "Reward", path="results")
-        _plot_line(timesteps, q_vals, "Q", path="results")
 
         # Save model parameters if improved
         if avg_reward > best_avg_reward:

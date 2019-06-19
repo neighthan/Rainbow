@@ -185,15 +185,15 @@ def main():
     env = Env(args)
     env.train()
     agent = Agent(args, env)
-    trainer = Trainer(args)
+    trainer = Trainer(env, args)
     trainer.training_loop(env, agent, args)
     env.close()
 
 
 def set_random_seed(seed):
     np.random.seed(seed)
-    torch.manual_seed(np.random.randint(1, 10000))
-    torch.cuda.manual_seed(np.random.randint(1, 10000))
+    torch.manual_seed(np.random.randint(1, 10_000))
+    torch.cuda.manual_seed(np.random.randint(1, 10_000))
 
 
 class Trainer:
