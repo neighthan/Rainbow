@@ -19,4 +19,5 @@ torch = "^1.1"
 tqdm = {version = "^4.32", optional = true}
 
 [tool.poetry.dev-dependencies]
+pre-commit = "^1.17"
 
