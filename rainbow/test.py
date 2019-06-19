@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import torch
 from .env import Env
 
@@ -9,8 +10,17 @@ q_vals = []
 best_avg_reward = -1e10
 
 
-def test(args, timestep, dqn, val_mem, evaluate=False, render=False):
+def test(
+    args,
+    timestep: int,
+    dqn,
+    val_mem,
+    evaluate: bool = False,
+    render: bool = False,
+    evaluation_episodes: Optional[int] = None,
+):
     global timesteps, rewards, q_vals, best_avg_reward
+    evaluation_episodes = evaluation_episodes or args.evaluation_episodes
     env = Env(args)
     env.eval()
     timesteps.append(timestep)
@@ -18,7 +28,7 @@ def test(args, timestep, dqn, val_mem, evaluate=False, render=False):
 
     # Test performance over several episodes
     done = True
-    for _ in range(args.evaluation_episodes):
+    for _ in range(evaluation_episodes):
         while True:
             if done:
                 state = env.reset()
