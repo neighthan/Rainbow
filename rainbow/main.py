@@ -36,7 +36,7 @@ def parse_args():
         type=int,
         default=int(108e3),
         metavar="LENGTH",
-        help="Max episode length (0 to disable)",
+        help="Max episode length in game frames (0 to disable)",
     )
     parser.add_argument(
         "--history-length",
@@ -45,6 +45,7 @@ def parse_args():
         metavar="T",
         help="Number of consecutive states processed",
     )
+    parser.add_argument('--architecture', type=str, default='canonical', choices=['canonical', 'data-efficient'], metavar='ARCH', help='Network architecture')
     parser.add_argument(
         "--hidden-size", type=int, default=512, metavar="SIZE", help="Network hidden size"
     )
@@ -120,7 +121,7 @@ def parse_args():
     parser.add_argument(
         "--target-update",
         type=int,
-        default=int(32e3),
+        default=int(8e3),
         metavar="τ",
         help="Number of steps after which to update target network",
     )
@@ -143,7 +144,7 @@ def parse_args():
     parser.add_argument(
         "--learn-start",
         type=int,
-        default=int(80e3),
+        default=int(20e3),
         metavar="STEPS",
         help="Number of steps before starting training",
     )
@@ -244,9 +245,9 @@ class Trainer:
                 action = agent.act(state)  # Choose an action greedily (with noisy weights)
             else:
                 action = np.random.randint(n_actions)
-            next_state, reward, done, info = env.step(action)  # Step
-            if "experience" in info:
-                for action, reward in info["experience"]:
+            next_state, reward, done, *info = env.step(action)  # Step
+            if info and "experience" in info[0]:
+                for action, reward in info[0]["experience"]:
                     if args.reward_clip > 0:
                         reward = max(min(reward, args.reward_clip), -args.reward_clip)
                     self.mem.append(state, action, reward, done)
