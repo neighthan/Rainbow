@@ -3,14 +3,10 @@ from datetime import datetime
 import atari_py
 import numpy as np
 import torch
-from tqdm import tnrange
-
-
 from .agent import Agent
 from .env import Env
 from .memory import ReplayMemory
 from .test import test
-from tqdm import tqdm
 
 
 def parse_args():
@@ -212,20 +208,25 @@ class Trainer:
         self.mem = ReplayMemory(args, capacity=args.memory_capacity)
 
         # Construct validation memory
-        # self.val_mem = ReplayMemory(args, capacity=args.evaluation_size)
-        # done = True
-        # for T in range(args.evaluation_size):
-        #     if done:
-        #         state, done = env.reset(), False
+        self.val_mem = ReplayMemory(args, capacity=args.evaluation_size)
+        done = True
+        for T in range(args.evaluation_size):
+            if done:
+                state = env.reset()
+                done = False
 
-        #     next_state, _, done = env.step(np.random.randint(0, env.action_space()))
-        #     self.val_mem.append(state, None, None, done)
-        #     state = next_state
+            next_state, _, done = env.step(np.random.randint(0, env.action_space()))
+            self.val_mem.append(state, None, None, done)
+            state = next_state
 
     def training_loop(self, env, agent, args, eval_func=None):
-        if True:  # what was the env variable again?
-            range_ = tnrange
-        else:
+        try:
+            import tqdm
+            if True:  # what was the env variable again?
+                range_ = tqdm.tnrange
+            else:
+                range_ = tqdm.trange
+        except ImportError:
             range_ = range
 
         priority_weight_increase = (1 - args.priority_weight) / (args.max_timesteps - args.learn_start)
