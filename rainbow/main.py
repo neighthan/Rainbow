@@ -1,5 +1,8 @@
 import argparse
+import os
+import pickle
 from datetime import datetime
+from pathlib import Path
 import atari_py
 import numpy as np
 import torch
@@ -41,9 +44,20 @@ def parse_args():
         metavar="T",
         help="Number of consecutive states processed",
     )
-    parser.add_argument('--architecture', type=str, default='canonical', choices=['canonical', 'data-efficient'], metavar='ARCH', help='Network architecture')
     parser.add_argument(
-        "--hidden-size", type=int, default=512, metavar="SIZE", help="Network hidden size"
+        "--architecture",
+        type=str,
+        default="canonical",
+        choices=["canonical", "data-efficient"],
+        metavar="ARCH",
+        help="Network architecture",
+    )
+    parser.add_argument(
+        "--hidden-size",
+        type=int,
+        default=512,
+        metavar="SIZE",
+        help="Network hidden size",
     )
     parser.add_argument(
         "--noisy-std",
@@ -176,6 +190,7 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 if __name__ == "__main__":
     main()
 
@@ -197,14 +212,10 @@ def set_random_seed(seed):
 
 
 class Trainer:
-    def __init__(self, env, args):
-        set_random_seed(args.seed)
-        if torch.cuda.is_available() and not args.disable_cuda:
-            args.device = torch.device("cuda")
-            torch.backends.cudnn.enabled = args.enable_cudnn
-        else:
-            args.device = torch.device("cpu")
+    def __init__(self, env, args, results_dir: str = "results"):
+        self.results_dir = results_dir
 
+        set_random_seed(args.seed)
         self.mem = ReplayMemory(args, capacity=args.memory_capacity)
 
         # Construct validation memory
@@ -215,21 +226,30 @@ class Trainer:
                 state = env.reset()
                 done = False
 
-            next_state, _, done = env.step(np.random.randint(0, env.action_space()))
+            next_state, _, done, *_ = env.step(np.random.randint(0, env.action_space()))
             self.val_mem.append(state, None, None, done)
             state = next_state
+
+        # for evaluating agent learning; used in test.test
+        self.timesteps = []
+        self.rewards = []
+        self.q_vals = []
+        self.best_avg_reward = -1e10
 
     def training_loop(self, env, agent, args, eval_func=None):
         try:
             import tqdm
-            if True:  # what was the env variable again?
+
+            if "JPY_PARENT_PID" in os.environ:
                 range_ = tqdm.tnrange
             else:
                 range_ = tqdm.trange
         except ImportError:
             range_ = range
 
-        priority_weight_increase = (1 - args.priority_weight) / (args.max_timesteps - args.learn_start)
+        priority_weight_increase = (1 - args.priority_weight) / (
+            args.max_timesteps - args.learn_start
+        )
 
         # Training loop
         agent.train()
@@ -243,7 +263,8 @@ class Trainer:
                 agent.reset_noise()  # Draw a new set of noisy weights
 
             if T > args.learn_start:
-                action = agent.act(state)  # Choose an action greedily (with noisy weights)
+                # Choose an action greedily (with noisy weights)
+                action = agent.act(state)
             else:
                 action = np.random.randint(n_actions)
             next_state, reward, done, *info = env.step(action)  # Step
@@ -269,9 +290,7 @@ class Trainer:
 
                 if T % args.evaluation_interval == 0 and eval_func:
                     agent.eval()  # Set DQN (online network) to evaluation mode
-                    eval_func()
-                    # avg_reward, avg_Q = test(args, T, self, val_mem)  # Test
-                    # log('T = ' + str(T) + ' / ' + str(max_timesteps) + ' | Avg. reward: ' + str(avg_reward) + ' | Avg. Q: ' + str(avg_Q))
+                    eval_func(T, self, agent, args)
                     agent.train()  # Set DQN (online network) back to training mode
 
                 # Update target network
@@ -279,3 +298,11 @@ class Trainer:
                     agent.update_target_net()
 
             state = next_state
+
+        save_data = {
+            "timesteps": self.timesteps,
+            "rewards": self.rewards,
+            "q_vals": self.q_vals,
+            "args": vars(args),
+        }
+        (Path(self.results_dir) / "data.pkl").write_bytes(pickle.dumps(save_data))
