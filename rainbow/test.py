@@ -1,6 +1,9 @@
 import os
+from gzip import GzipFile
+from pathlib import Path
 from time import sleep
 from typing import Optional
+import numpy as np
 import torch
 from .env import Env
 
@@ -25,17 +28,24 @@ def test(
     timestep_q_vals = []
 
     done = True
-    for _ in range(evaluation_episodes):
+    all_obs = []
+    for episode_i in range(evaluation_episodes):
         while True:
             if done:
                 state = env.reset()
                 reward_sum = 0
                 done = False
                 i = 0
+                if episode_i == 0:
+                    all_obs.append(state)
 
             action = dqn.act_e_greedy(state)  # Choose an action ε-greedily
             state, reward, done, *_ = env.step(action)
             reward_sum += reward
+
+            if episode_i == 0:
+                all_obs.append(state)
+
             if render or args.render:
                 env.render()
                 sleep(render_delay)
@@ -45,6 +55,17 @@ def test(
                 break
             i += 1
     env.close()
+
+    # TODO - this is for the test environment; for Atari, we need to preprocess a little differently
+    # (e.g. do * 255 before .astype(np.uint8). Check `env` to determine what to do?)
+    all_obs = np.stack(
+        [
+            np.flipud(frame.numpy().astype(np.uint8).squeeze().transpose())
+            for frame in all_obs
+        ]
+    )
+    with GzipFile(Path(trainer.results_dir) / f"video_{timestep}.npy.gz", "w") as f:
+        np.save(f, arr=all_obs)
 
     # Test Q-values over validation memory
     for state in trainer.val_mem:
